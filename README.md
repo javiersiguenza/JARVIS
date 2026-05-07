@@ -20,36 +20,15 @@ Everything is configurable and persisted across sessions. No word recognition �
 
 ## Preview
 
-```
-Menu bar:   ⚡▃   (live VU-meter, always visible)
-            ✦     (when triggered)
-            🔇     (when muted)
-```
+![STARK MODE menu](assets/screenshot.png)
+
+The menu bar icon (`⚡`) shows a live VU-meter that animates with the microphone input (`⚡▁` → `⚡█`). When triggered it switches to `✦`, and to `🔇` when muted.
+
+When STARK MODE fires, a **Stop** button appears inline to immediately cancel music and reset the cooldown:
 
 ```
-┌─────────────────────────────────────────────┐
-│  STARK MODE  —  J.A.R.V.I.S.               │
-│ ─────────────────────────────────────────── │
-│  ● Listening...                             │
-│  Level  ▓▓▓▓░░░░░░░░░░░░░░░░  0.0421 🟢   │
-│ ─────────────────────────────────────────── │
-│  Threshold  ────────────────  0.08          │
-│  ●━━━━━━━━━━━━○──────────────              │ ← drag to adjust
-│ ─────────────────────────────────────────── │
-│  ⚙  Settings                            ►  │
-│     🌐 🖥 📁 ♪  enabled                    │
-│     https://claude.ai  ·  Calculator  ·  …  │
-│ ─────────────────────────────────────────── │
-│  🔇  Mute                                   │
-│  ⏻  Quit                                   │
-└─────────────────────────────────────────────┘
-```
-
-When triggered, a **Stop** button appears to immediately cancel the sequence and music:
-
-```
-│  ✦  ACCESS GRANTED — Welcome, Sir.         │
-│  ⏹  Stop STARK MODE                        │ ← appears on trigger
+✦  ACCESS GRANTED — Welcome, Sir.
+⏹  Stop STARK MODE                  ← only visible when active
 ```
 
 ---
