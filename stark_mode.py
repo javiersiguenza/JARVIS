@@ -1,33 +1,33 @@
 """
-STARK MODE - Sistema de Activación por Sonido
-==============================================
+STARK MODE - Sound Activation System (terminal version)
+========================================================
 
-INSTALACIÓN DE DEPENDENCIAS:
------------------------------
-Ejecuta estos comandos en tu terminal antes de correr el script:
+INSTALLING DEPENDENCIES:
+-------------------------
+Run these commands in your terminal before running the script:
 
     pip install sounddevice numpy pygame
 
-Si sounddevice falla al detectar el micrófono en macOS, también instala:
+If sounddevice fails to detect the microphone on macOS, also install:
     pip install PyAudio
-    (requiere: brew install portaudio)
+    (requires: brew install portaudio)
 
-ESTRUCTURA DE ARCHIVOS ESPERADA:
----------------------------------
-tony-stark/
-├── stark_mode.py       ← este script
-└── jarvis.mp3          ← tu MP3 preferido (renómbralo así o cambia MUSIC_FILE)
+EXPECTED FILE STRUCTURE:
+-------------------------
+JARVIS/
+├── stark_mode.py       ← this script
+└── jarvis.mp3          ← your preferred MP3 (rename it or change MUSIC_FILE)
 
-AJUSTE DE SENSIBILIDAD:
+SENSITIVITY ADJUSTMENT:
 ------------------------
-- THRESHOLD: Valor entre 0.01 y 1.0.
-  * 0.01–0.03  → muy sensible (se activa con voz normal o ruido ambiente)
-  * 0.05–0.10  → sensible (aplauso moderado o voz alta)
-  * 0.15–0.30  → poco sensible (aplauso fuerte o golpe en la mesa)
-  Empieza en 0.08 y ajusta según tu micrófono.
+- THRESHOLD: Value between 0.01 and 1.0.
+  * 0.01–0.03  → very sensitive (triggers with normal voice or ambient noise)
+  * 0.05–0.10  → sensitive (moderate clap or loud voice)
+  * 0.15–0.30  → low sensitivity (hard clap or desk knock)
+  Start at 0.08 and adjust to your microphone.
 
-- CONFIRM_FRAMES: Cuántas muestras consecutivas deben superar el umbral
-  antes de activar. Aumenta para evitar falsos positivos.
+- CONFIRM_FRAMES: How many consecutive samples must exceed the threshold
+  before triggering. Increase to avoid false positives.
 """
 
 import sounddevice as sd
@@ -40,36 +40,36 @@ import sys
 import time
 
 # ─────────────────────────────────────────────
-#  CONFIGURACIÓN — edita estos valores
+#  CONFIGURATION — edit these values
 # ─────────────────────────────────────────────
 
-# Sensibilidad del micrófono (0.01 = muy sensible, 0.30 = poco sensible)
+# Microphone sensitivity (0.01 = very sensitive, 0.30 = low sensitivity)
 THRESHOLD = 0.08
 
-# Cuántas muestras consecutivas por encima del umbral se necesitan
-# para confirmar la activación (evita falsos positivos por ruido puntual)
+# How many consecutive frames above the threshold are needed
+# to confirm activation (avoids false positives from brief noise)
 CONFIRM_FRAMES = 3
 
-# Tasa de muestreo del micrófono (Hz) — 44100 es estándar
+# Microphone sample rate (Hz) — 44100 is standard
 SAMPLE_RATE = 44100
 
-# Tamaño del bloque de audio que se analiza en cada ciclo
+# Size of the audio block analysed each cycle
 BLOCK_SIZE = 1024
 
-# Archivo MP3 a reproducir (debe estar en la misma carpeta que este script)
+# MP3 file to play (must be in the same folder as this script)
 MUSIC_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "jarvis.mp3")
 
-# URL que se abrirá en el navegador (tu correo o Claude)
+# URL to open in the browser
 BROWSER_URL = "https://claude.ai"
 
-# Ruta de la carpeta que se abrirá en Finder/Explorer
+# Path of the folder to open in Finder / Explorer
 TARGET_FOLDER = os.path.expanduser("~/Documents")
 
-# Tiempo de espera (segundos) antes de volver a escuchar tras una activación
+# Cooldown (seconds) before the system listens again after activation
 COOLDOWN = 10
 
 # ─────────────────────────────────────────────
-#  PALETA DE COLORES ANSI para la consola
+#  ANSI COLOURS for the terminal
 # ─────────────────────────────────────────────
 
 RED    = "\033[91m"
@@ -81,7 +81,6 @@ RESET  = "\033[0m"
 
 
 def banner():
-    """Imprime el banner de inicio al estilo Stark Industries."""
     print(f"""
 {CYAN}{BOLD}
  ███████╗████████╗ █████╗ ██████╗ ██╗  ██╗    ███╗   ███╗ ██████╗ ██████╗ ███████╗
@@ -92,79 +91,71 @@ def banner():
  ╚══════╝   ╚═╝   ╚═╝  ╚═╝╚═╝  ╚═╝╚═╝  ╚═╝   ╚═╝     ╚═╝ ╚═════╝ ╚═════╝ ╚══════╝
 {RESET}
 {YELLOW}                         [ STARK INDUSTRIES — J.A.R.V.I.S. v1.0 ]{RESET}
-{YELLOW}              Sistema de Activación por Sonido — Nivel de acceso: MÁXIMO{RESET}
+{YELLOW}                  Sound Activation System — Access level: MAXIMUM{RESET}
 """)
 
 
 def print_config():
-    """Muestra la configuración activa."""
     print(f"{CYAN}{'─'*60}{RESET}")
-    print(f"{BOLD}  CONFIGURACIÓN ACTIVA:{RESET}")
-    print(f"  Umbral de detección : {YELLOW}{THRESHOLD}{RESET}")
-    print(f"  Frames de confirmación: {YELLOW}{CONFIRM_FRAMES}{RESET}")
-    print(f"  URL navegador       : {YELLOW}{BROWSER_URL}{RESET}")
-    print(f"  Carpeta objetivo    : {YELLOW}{TARGET_FOLDER}{RESET}")
-    music_status = f"{GREEN}✓ encontrado{RESET}" if os.path.exists(MUSIC_FILE) else f"{RED}✗ no encontrado ({MUSIC_FILE}){RESET}"
-    print(f"  Archivo de música   : {music_status}")
+    print(f"{BOLD}  ACTIVE CONFIGURATION:{RESET}")
+    print(f"  Detection threshold : {YELLOW}{THRESHOLD}{RESET}")
+    print(f"  Confirm frames      : {YELLOW}{CONFIRM_FRAMES}{RESET}")
+    print(f"  Browser URL         : {YELLOW}{BROWSER_URL}{RESET}")
+    print(f"  Target folder       : {YELLOW}{TARGET_FOLDER}{RESET}")
+    music_status = f"{GREEN}✓ found{RESET}" if os.path.exists(MUSIC_FILE) else f"{RED}✗ not found ({MUSIC_FILE}){RESET}"
+    print(f"  Music file          : {music_status}")
     print(f"{CYAN}{'─'*60}{RESET}\n")
 
 
 def init_audio():
-    """Inicializa pygame para reproducción de audio."""
     pygame.mixer.init()
 
 
 def play_music():
-    """Reproduce el MP3 si existe; muestra advertencia si no."""
     if not os.path.exists(MUSIC_FILE):
-        print(f"  {YELLOW}⚠  Música no encontrada: {MUSIC_FILE}{RESET}")
-        print(f"  {YELLOW}   Coloca un MP3 llamado 'jarvis.mp3' junto al script.{RESET}")
+        print(f"  {YELLOW}⚠  Music file not found: {MUSIC_FILE}{RESET}")
+        print(f"  {YELLOW}   Place an MP3 named 'jarvis.mp3' next to the script.{RESET}")
         return
     try:
         pygame.mixer.music.load(MUSIC_FILE)
         pygame.mixer.music.play()
-        print(f"  {GREEN}♪  Reproduciendo: {os.path.basename(MUSIC_FILE)}{RESET}")
+        print(f"  {GREEN}♪  Playing: {os.path.basename(MUSIC_FILE)}{RESET}")
     except Exception as e:
-        print(f"  {RED}Error al reproducir música: {e}{RESET}")
+        print(f"  {RED}Error playing music: {e}{RESET}")
 
 
 def open_browser():
-    """Abre la URL configurada en el navegador por defecto."""
     try:
         webbrowser.open(BROWSER_URL)
-        print(f"  {GREEN}✓  Navegador abierto → {BROWSER_URL}{RESET}")
+        print(f"  {GREEN}✓  Browser opened → {BROWSER_URL}{RESET}")
     except Exception as e:
-        print(f"  {RED}Error abriendo navegador: {e}{RESET}")
+        print(f"  {RED}Error opening browser: {e}{RESET}")
 
 
-def open_terminal_or_calculator():
-    """
-    Abre la calculadora del sistema o el terminal según el OS.
-    En macOS abre Calculator.app; en Linux, abre gnome-calculator o xterm.
-    """
+def open_calculator():
+    """Opens the system calculator or terminal depending on the OS."""
     try:
         if sys.platform == "darwin":
             subprocess.Popen(["open", "-a", "Calculator"])
-            print(f"  {GREEN}✓  Calculadora abierta (macOS){RESET}")
+            print(f"  {GREEN}✓  Calculator opened (macOS){RESET}")
         elif sys.platform.startswith("linux"):
-            # Intenta gnome-calculator; si falla, abre xterm
+            # Try gnome-calculator; fall back to xterm
             try:
                 subprocess.Popen(["gnome-calculator"])
             except FileNotFoundError:
                 subprocess.Popen(["xterm"])
-            print(f"  {GREEN}✓  Calculadora/Terminal abierto (Linux){RESET}")
+            print(f"  {GREEN}✓  Calculator / Terminal opened (Linux){RESET}")
         elif sys.platform == "win32":
             subprocess.Popen(["calc.exe"])
-            print(f"  {GREEN}✓  Calculadora abierta (Windows){RESET}")
+            print(f"  {GREEN}✓  Calculator opened (Windows){RESET}")
     except Exception as e:
-        print(f"  {RED}Error abriendo calculadora: {e}{RESET}")
+        print(f"  {RED}Error opening calculator: {e}{RESET}")
 
 
 def open_folder():
-    """Abre la carpeta configurada en el explorador de archivos del sistema."""
     try:
         if not os.path.exists(TARGET_FOLDER):
-            print(f"  {YELLOW}⚠  Carpeta no encontrada: {TARGET_FOLDER}{RESET}")
+            print(f"  {YELLOW}⚠  Folder not found: {TARGET_FOLDER}{RESET}")
             return
 
         if sys.platform == "darwin":
@@ -174,66 +165,60 @@ def open_folder():
         elif sys.platform == "win32":
             subprocess.Popen(["explorer", TARGET_FOLDER])
 
-        print(f"  {GREEN}✓  Carpeta abierta → {TARGET_FOLDER}{RESET}")
+        print(f"  {GREEN}✓  Folder opened → {TARGET_FOLDER}{RESET}")
     except Exception as e:
-        print(f"  {RED}Error abriendo carpeta: {e}{RESET}")
+        print(f"  {RED}Error opening folder: {e}{RESET}")
 
 
 def stark_mode():
-    """
-    Función principal que se ejecuta cuando se detecta el aplauso.
-    Lanza todas las acciones en paralelo (el OS las gestiona de forma asíncrona).
-    """
     print(f"\n{GREEN}{BOLD}{'═'*60}{RESET}")
-    print(f"{GREEN}{BOLD}  ✦  ACCESO CONCEDIDO. BIENVENIDO, SEÑOR.{RESET}")
+    print(f"{GREEN}{BOLD}  ✦  ACCESS GRANTED. WELCOME, SIR.{RESET}")
     print(f"{GREEN}{BOLD}{'═'*60}{RESET}\n")
-    print(f"{CYAN}  Iniciando secuencia STARK MODE...{RESET}\n")
+    print(f"{CYAN}  Launching STARK MODE sequence...{RESET}\n")
 
     play_music()
     open_browser()
-    open_terminal_or_calculator()
+    open_calculator()
     open_folder()
 
-    print(f"\n{CYAN}  Secuencia completa. Entrando en modo reposo ({COOLDOWN}s)...{RESET}")
+    print(f"\n{CYAN}  Sequence complete. Entering standby ({COOLDOWN}s)...{RESET}")
 
 
 def monitor_microphone():
     """
-    Bucle principal: escucha el micrófono en tiempo real con sounddevice.
-    Cuando el RMS del bloque supera el THRESHOLD durante CONFIRM_FRAMES
-    muestras consecutivas, dispara stark_mode().
+    Main loop: listens to the microphone in real time using sounddevice.
+    When the block RMS exceeds THRESHOLD for CONFIRM_FRAMES consecutive
+    samples, stark_mode() is triggered.
     """
-    print(f"{CYAN}  Iniciando monitorización de micrófono...{RESET}")
+    print(f"{CYAN}  Starting microphone monitoring...{RESET}")
     print(f"\n{YELLOW}{'─'*60}{RESET}")
-    print(f"{BOLD}  >> Esperando comando de voz...{RESET}")
-    print(f"{YELLOW}  (Aplaude o da un golpe fuerte para activar){RESET}")
-    print(f"{YELLOW}  (Presiona Ctrl+C para salir){RESET}")
+    print(f"{BOLD}  >> Waiting for voice command...{RESET}")
+    print(f"{YELLOW}  (Clap or knock hard to activate){RESET}")
+    print(f"{YELLOW}  (Press Ctrl+C to exit){RESET}")
     print(f"{YELLOW}{'─'*60}{RESET}\n")
 
-    # Contador de frames consecutivos que superan el umbral
     trigger_count = 0
-    # Tiempo de la última activación (para el cooldown)
-    last_trigger = 0
+    last_trigger  = 0
 
     def audio_callback(indata, frames, time_info, status):
         """
-        Callback invocado por sounddevice en cada bloque de audio capturado.
-        Se ejecuta en un hilo separado — sólo modifica variables compartidas.
+        Invoked by sounddevice for each captured audio block.
+        Runs in a separate thread — only performs atomic variable writes.
         """
         nonlocal trigger_count, last_trigger
 
-        # Calcula el RMS (Root Mean Square) del bloque — medida de volumen
+        # RMS (Root Mean Square) of the block — a measure of volume
         rms = float(np.sqrt(np.mean(indata ** 2)))
 
-        # Visualizador de nivel en tiempo real (barra proporcional al volumen)
+        # Real-time level bar proportional to volume
         bar_len = int(rms * 300)
-        bar = "█" * min(bar_len, 50)
-        color = GREEN if rms < THRESHOLD else RED
-        print(f"\r  Nivel: {color}{bar:<50}{RESET}  RMS: {rms:.4f}", end="", flush=True)
+        bar     = "█" * min(bar_len, 50)
+        color   = GREEN if rms < THRESHOLD else RED
+        print(f"\r  Level: {color}{bar:<50}{RESET}  RMS: {rms:.4f}", end="", flush=True)
 
         now = time.time()
 
-        # Ignora activaciones durante el período de cooldown
+        # Ignore activations during the cooldown period
         if now - last_trigger < COOLDOWN:
             trigger_count = 0
             return
@@ -241,19 +226,17 @@ def monitor_microphone():
         if rms > THRESHOLD:
             trigger_count += 1
         else:
-            trigger_count = 0  # Resetea si hay silencio entre muestras
+            trigger_count = 0  # reset on silence between samples
 
         if trigger_count >= CONFIRM_FRAMES:
             trigger_count = 0
-            last_trigger = now
-            print()  # Salto de línea para separar el log del nivel
+            last_trigger  = now
+            print()
             stark_mode()
-            # Reactiva el mensaje de espera
             print(f"\n{YELLOW}{'─'*60}{RESET}")
-            print(f"{BOLD}  >> Esperando comando de voz...{RESET}")
+            print(f"{BOLD}  >> Waiting for voice command...{RESET}")
             print(f"{YELLOW}{'─'*60}{RESET}\n")
 
-    # Abre el stream del micrófono (mono, callback asíncrono)
     with sd.InputStream(
         samplerate=SAMPLE_RATE,
         blocksize=BLOCK_SIZE,
@@ -265,11 +248,11 @@ def monitor_microphone():
             while True:
                 time.sleep(0.1)
         except KeyboardInterrupt:
-            print(f"\n\n{RED}  Sistema STARK MODE desactivado. Hasta pronto, Señor.{RESET}\n")
+            print(f"\n\n{RED}  STARK MODE deactivated. Goodbye, Sir.{RESET}\n")
 
 
 # ─────────────────────────────────────────────
-#  PUNTO DE ENTRADA
+#  ENTRY POINT
 # ─────────────────────────────────────────────
 
 if __name__ == "__main__":
