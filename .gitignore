@@ -1,0 +1,25 @@
+# Music — do not commit copyrighted audio files
+*.mp3
+*.wav
+*.ogg
+*.flac
+
+# User settings — each user has their own config
+stark_config.json
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Virtual environments
+venv/
+.venv/
+env/
